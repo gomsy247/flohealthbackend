@@ -114,6 +114,7 @@ const db = mysql.createConnection({
   user: process.env.ENV === "prod" ? process.env.DB_USERNAME : "root",
   password: process.env.ENV === "prod" ? process.env.DB_PASSWORD : "",
   database: process.env.ENV === "prod" ? process.env.DB_DATABASE : "flohealthhubco_telemedicine",
+  connectTimeout: 10000 // Optional: increase timeout if needed
 });
 console.log("MY DB", db)
 db.connect((err) => {
