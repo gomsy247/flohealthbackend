@@ -32,6 +32,7 @@ import WebSocket from 'ws';
 import mysql from 'mysql';
 import cron from 'cron';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import cluster from 'cluster';
 import { cpus } from 'os';
 import fs from 'fs';
@@ -61,6 +62,8 @@ app.use(cors({
 app.use(cookieParser());
 
 app.use(express.json());
+
+dotenv.config();
 
 // Get the current file URL and convert it to a directory path
 const __filename = fileURLToPath(import.meta.url);
@@ -106,10 +109,10 @@ app.use('/api/appointments', appointmentRoute);
 app.use('/api/payments', paymentRoute);
 
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'flohealthhubco_telemedicine'
+  host: process.env.ENV === "prod" ? process.env.DB_HOST : "localhost",
+  user: process.env.ENV === "prod" ? process.env.DB_USERNAME : "root",
+  password: process.env.ENV === "prod" ? process.env.DB_PASSWORD : "",
+  database: process.env.ENV === "prod" ? process.env.DB_DATABASE : "flohealthhubco_telemedicine",
 });
 
 db.connect((err) => {
