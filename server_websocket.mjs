@@ -110,11 +110,12 @@ app.use('/api/payments', paymentRoute);
 
 const db = mysql.createConnection({
   host: process.env.ENV === "prod" ? process.env.DB_HOST : "localhost",
+  port: process.env.ENV === "prod" ? process.env.DB_PORT : "3306",
   user: process.env.ENV === "prod" ? process.env.DB_USERNAME : "root",
   password: process.env.ENV === "prod" ? process.env.DB_PASSWORD : "",
   database: process.env.ENV === "prod" ? process.env.DB_DATABASE : "flohealthhubco_telemedicine",
 });
-
+console.log("MY DB", db)
 db.connect((err) => {
   if (err) throw err;
   console.log('Connected to database');
