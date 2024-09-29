@@ -32,48 +32,17 @@ import WebSocket from 'ws';
 import mysql from 'mysql';
 import cron from 'cron';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import cluster from 'cluster';
 import { cpus } from 'os';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 
 const numCPUs = cpus().length;
 const PORT = process.env.PORT || 8801;
 
 const app = express();
-
-//app.use(cors());
-/* const corsOptions = {
-  origin: [
-    /\.naijastreets\.ng$/, 
-    'http://localhost:3000',// match subdomains
-    'https://app.flohealthhub.co.uk'
-  ],
-  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
-};
- */
-// Allow requests only from specific origins
-app.use(cors({
-  origin: ['https://app.flohealthhub.co.uk', 'http://localhost:3000', 'http://localhost:52460', 
-  'https://flohealthhub.co.uk'],
-}));
-
+app.use(cors());
 app.use(cookieParser());
 
 app.use(express.json());
-
-dotenv.config();
-
-// Get the current file URL and convert it to a directory path
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Define the directory containing your photos
-const photosDirectory = path.join(__dirname, 'photos');
-
-// Serve the photos directory statically
-app.use('/photos', express.static(photosDirectory));
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -109,14 +78,12 @@ app.use('/api/appointments', appointmentRoute);
 app.use('/api/payments', paymentRoute);
 
 const db = mysql.createConnection({
-  host: process.env.ENV === "prod" ? process.env.DB_HOST : "localhost",
-  port: process.env.ENV === "prod" ? process.env.DB_PORT : "3306",
-  user: process.env.ENV === "prod" ? process.env.DB_USERNAME : "root",
-  password: process.env.ENV === "prod" ? process.env.DB_PASSWORD : "",
-  database: process.env.ENV === "prod" ? process.env.DB_DATABASE : "flohealthhubco_telemedicine",
-  connectTimeout: 10000 // Optional: increase timeout if needed
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'flohealthhubco_telemedicine'
 });
-console.log("MY DB", db)
+
 db.connect((err) => {
   if (err) throw err;
   console.log('Connected to database');
@@ -172,7 +139,7 @@ if (cluster.isMaster) {
       console.log('Client disconnected');
     });
 
-    ws.send('Welcome To Doctor Appointment');
+    ws.send('Connected to WebSocket server');
   });
 
   app.get('/confirmed-appointment/:id/:userIdName', (req, res) => {

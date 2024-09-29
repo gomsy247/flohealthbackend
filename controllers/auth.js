@@ -214,7 +214,7 @@ export const login = (req, res) => {
   console.log("REQ.BODY", req.body);
  // Inside the login API endpoint
 dbCI.query(q, [req.body.username], (err, data) => {
- 
+
   if (err) {
     console.error(err);
     return res.status(500).json(err);
@@ -333,7 +333,7 @@ export const registerDoctor = (req, res) => {
       company = "", lor = "", hospital_ion_id = "", created_at = "", updated_at = "";
 
     // Extract data from the request body
-    const { name, email, password, address, phone, department, specialization, bio } = req.body;
+    const { name, email, password, address, phone, department, specialization, licence_number, issuing_authority, validity_date, year_of_experience, bio } = req.body;
     username = email.split('@')[0];
     ip_address = req.connection.remoteAddress;
 
@@ -391,7 +391,7 @@ export const registerDoctor = (req, res) => {
           usertype, ip_address, username, password, salt, email, activation_code,
           forgotten_password_code, forgotten_password_time, remember_code,
           created_on, last_login, active, first_name, last_name,
-          company, phone, hobbies, profilePic, lor, hospital_ion_id, seenNotifications, inSeenNotifications, created_at, updated_at
+          company, phone, hobbies, profilePic, lor, hospital_ion_id, seenNotifications, unSeenNotifications, created_at, updated_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
@@ -405,12 +405,12 @@ export const registerDoctor = (req, res) => {
 
       // Insert doctor data into the database
       const doctorInsertQuery = `
-        INSERT INTO doctor (name, email, address, phone, department, specialization, bio)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO doctor (name, email, address, phone, department, specialization, year_of_experience, license_number, issuing_authority, validity_date, bio)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const doctorData = [
-        name, email, address, phone, department, specialization, bio
+        name, email, address, phone, department, specialization, year_of_experience, licence_number, issuing_authority, validity_date, bio
       ];
 
       // Execute both queries in parallel
@@ -654,10 +654,29 @@ export const registerPatient = (req, res) => {
 
 
 
-// Controller function to handle the request and retrieve all doctors
+/* // Controller function to handle the request and retrieve all doctors
   export const getAllDoctors = (req, res) => {
   // Query to retrieve all doctors from the database
-  const query = 'SELECT id, name, specialization FROM doctor';
+  const query = 'SELECT * FROM doctor';
+
+  // Execute the query
+  dbCI.query(query, (error, results) => {
+    if (error) {
+      console.error('Error fetching doctors:', error);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    // Return the list of doctors as a JSON response
+    res.json(results);
+  });
+};
+ */
+
+/* // Controller function to handle the request and retrieve all doctors
+export const getAllDoctors = (req, res) => {
+  // Query to retrieve all doctors from the database, excluding the 'id' column
+ // const query = "SELECT * FROM doctor order by online=yes";
+ // It makes sure the doctors that have online = yes to come first
+ const query = "SELECT * FROM doctor ORDER BY CASE WHEN online = 'yes' THEN 1 ELSE 2 END";
 
   // Execute the query
   dbCI.query(query, (error, results) => {
@@ -666,10 +685,66 @@ export const registerPatient = (req, res) => {
       return res.status(500).json({ error: 'Internal Server Error' });
     }
 
-    // Return the list of doctors as a JSON response
-    res.json(results);
+    // Remove the 'id' field from each result
+    const doctorsWithoutId = results.map((doctor) => {
+      const { id, ...rest } = doctor;
+      const restWithCounty = {countinent: id, ...rest};
+      return restWithCounty;
+    });
+
+    // Return the list of doctors (without 'id') as a JSON response
+    res.json(doctorsWithoutId);
+  });
+}; */
+
+// Controller function to handle the request and retrieve all doctors
+export const getAllDoctors = (req, res) => {
+  // Step 1: Fetch all doctors
+  const doctorQuery = "SELECT * FROM doctor ORDER BY CASE WHEN online = 'yes' THEN 1 ELSE 2 END";
+
+  dbCI.query(doctorQuery, (doctorError, doctorResults) => {
+    if (doctorError) {
+      console.error('Error fetching doctors:', doctorError);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+    // Step 2: Fetch all users
+    const userQuery = "SELECT id, username FROM users";
+
+    dbCI.query(userQuery, (userError, userResults) => {
+      if (userError) {
+        console.error('Error fetching users:', userError);
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+
+      // Step 3: Create a map of username to userId
+      const userMap = {};
+      userResults.forEach(user => {
+        userMap[user.username] = user.id;
+      });
+
+      // Step 4: Map doctor data to include the correct userId based on email prefix
+      const doctorsWithUserId = doctorResults.map((doctor) => {
+        const emailPrefix = doctor.email.split('@')[0];
+        const userId = userMap[emailPrefix];
+        return {
+          ...doctor,
+          doctorUserId: userId || null // Add null if no matching user is found
+        };
+      });
+
+      // Step 5: Log the results for debugging
+      //console.log('doctorsWithUserId:', doctorsWithUserId);
+
+      // Step 6: Return the list of doctors with the associated user ID as a JSON response
+      res.json(doctorsWithUserId);
+    });
   });
 };
+
+
+
+
 
 // Controller function to handle the request and retrieve patients for a particular doctor
 export const getPatientsByDoctorId = (req, res) => {

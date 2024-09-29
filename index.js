@@ -25,13 +25,22 @@ import http from 'http';
 import WebSocket from 'ws';
 import mysql from 'mysql';
 import cron from 'cron';
+import { Server } from 'socket.io';
 
 // Get the absolute path of the current directory
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:3000'], // Update with your frontend's URL
+    methods: ['GET', 'POST'],
+  },
+});
+
+
+//const wss = new WebSocket.Server({ server });
 
 // Use Helmet for additional security measures
 app.use(helmet());
@@ -47,16 +56,16 @@ app.use(helmet());
 app.use(cors(corsOptions));
  */
 
-const corsOptions = {
+/* const corsOptions = {
   origin: [
-    'https://naijapis.naijastreets.ng',
-    /\.naijastreets\.ng$/, 
+    'https://app.flohealthhub.co.uk',
+    /\.flohealthhub\.co\.uk$/,
     'http://localhost:3000',// match subdomains
   ],
   optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); */
 //app.use(cors('*'));
 
 dotenv.config();
@@ -73,6 +82,8 @@ app.use(session({
   next();
 }); */
 app.use(express.json());
+
+app.use('/photos', express.static(__dirname + '/photos'));
 
 /* app.use(
   cors({
@@ -127,6 +138,35 @@ app.use('/api/appointments', appointmentRoute);
 app.use('/api/payments', paymentRoute);
 
 let authenticationStatus = false;
+
+const users = {}; // Track users and their socket IDs
+
+io.on('connection', (socket) => {
+  console.log('New client connected', socket.id);
+
+  socket.on('patient-join', ({ userId, socketId }) => {
+    console.log(`User ID: ${userId}, Socket ID: ${socketId}`);
+    // Notify the doctor or perform any action required
+  });
+
+  socket.on('doctor-response', ({ doctorId, patientId, message }) => {
+    console.log("DOctor ID Patient ID: ", doctorId, patientId);
+    const patientSocketId = users[patientId];
+    if (patientSocketId) {
+      io.to(patientSocketId).emit('doctor-response', { doctorId, message });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected', socket.id);
+    Object.keys(users).forEach((userId) => {
+      if (users[userId] === socket.id) {
+        delete users[userId];
+      }
+    });
+  });
+
+});
 
 // Gomsolutions
 /* const oauth2Client = new google.auth.OAuth2(
@@ -199,7 +239,7 @@ app.get('/session', async (req, res) => {
   res.json({oauth2ClientSession, youtube})
 });
 
-// WEBSOCKET CODES 
+// WEBSOCKET CODES
 // Database connection
 
 db.connect((err) => {
@@ -255,19 +295,26 @@ app.get('/call-server/:id/:userIdName', (req, res) => {
 });
 
 // Listen for WebSocket connections
-wss.on('connection', (ws) => {
+/* wss.on('connection', (ws) => {
   console.log('Client connected');
-  
+
   // Handle messages from clients (optional)
   ws.on('message', (message) => {
     console.log(`Received message: ${message.status}`);
     ws.send(`Your appointment has just been approved by ${message.namer}`);
   });
-  
+
+  // Handle messages from clients (optional)
+  ws.on('patient-join', (message) => {
+    console.log(`Received message: ${message}`);
+  });
+
   // Notify the client of any initial state (optional)
   ws.send('Connected to WebSocket server Kapolo');
-});
-// WEBSOCKET CODES 
+}); */
+// WEBSOCKET CODES
+
+
 
 
 
